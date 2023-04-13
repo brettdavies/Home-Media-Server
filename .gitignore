@@ -1,0 +1,9 @@
+.DS_Store
+*.env
+/nzbget/config
+/overseerr/config
+/plex/config
+/prowlarr/config
+/radarr/config
+/sonarr/config
+/vpn/config

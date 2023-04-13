@@ -1,0 +1,46 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"remote.SSH.defaultForwardedPorts": [
+			{
+				"localPort": 32400,
+				"remotePort": 32400,
+				"name": "plex"
+			},
+			{
+				"localPort": 5055,
+				"remotePort": 5055,
+				"remoteHost": "10.0.0.2",
+				"name": "overseerr"
+			},
+			{
+				"localPort": 6789,
+				"remotePort": 6789,
+				"remoteHost": "10.0.0.2",
+				"name": "nzbget"
+			},
+			{
+				"localPort": 7878,
+				"remotePort": 7878,
+				"remoteHost": "10.0.0.2",
+				"name": "radarr"
+			},
+			{
+				"localPort": 8989,
+				"remotePort": 8989,
+				"remoteHost": "10.0.0.2",
+				"name": "sonarr"
+			},
+			{
+				"localPort": 9696,
+				"remotePort": 9696,
+				"remoteHost": "10.0.0.2",
+				"name": "prowlarr"
+			}
+		]
+	}
+}

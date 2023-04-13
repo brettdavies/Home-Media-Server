@@ -1,0 +1,175 @@
+version: '3.7'
+
+services:
+  plex:
+    container_name: plex
+    image: linuxserver/plex
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+      - "./plex/plex.env"
+    volumes:
+      - "./plex/config:/config"
+      - "~/data/media/tv:/tv:rw"
+      - "~/data/media/movies:/movies:rw"
+
+  autoheal:
+    container_name: autoheal
+    image: willfarrell/autoheal
+    restart: unless-stopped
+    env_file:
+      - "./autoheal/autoheal.env"
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+
+  vpn:
+    container_name: vpn
+    depends_on:
+      - autoheal
+    image: linuxserver/wireguard
+    restart: unless-stopped
+    networks:
+      backbone:
+        ipv4_address: 10.0.0.2
+    env_file:
+      - "./common.env"
+    volumes:
+      - "/lib/modules:/lib/modules:ro"
+      - "./vpn/config:/config"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+    # Overseerr port
+      - 5055:5055
+    # NZBGET port
+      - 6789:6789
+    # Radarr port
+      - 7878:7878
+    # Sonarr port
+      - 8989:8989
+    # Prowlarr port
+      - 9696:9696
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+  nzbget:
+    container_name: nzbget
+    depends_on:
+      - vpn
+      - autoheal
+    image: linuxserver/nzbget
+    network_mode: service:vpn
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+    volumes:
+      - "./nzbget/config:/config"
+      - "~/data/usenet:/data/usenet:rw"
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+  prowlarr:
+    container_name: prowlarr
+    depends_on:
+      - vpn
+      - autoheal
+      - nzbget
+    image: linuxserver/prowlarr:develop
+    network_mode: service:vpn
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+    volumes:
+      - "./prowlarr/config:/config"
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+  sonarr:
+    container_name: sonarr
+    depends_on:
+      - autoheal
+      - prowlarr
+      - nzbget
+    image: linuxserver/sonarr:latest
+    network_mode: service:vpn
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+    volumes:
+      - "./sonarr/config:/config"
+      - "~/data:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+  radarr:
+    container_name: radarr
+    depends_on:
+      - autoheal
+      - prowlarr
+      - nzbget
+    image: linuxserver/radarr:latest
+    network_mode: service:vpn
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./radarr/config:/config"
+      - "~/data:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+  overseerr:
+    container_name: overseerr
+    depends_on:
+      - plex
+      - autoheal
+      - sonarr
+      - radarr
+    image: linuxserver/overseerr:latest
+    network_mode: service:vpn
+    restart: unless-stopped
+    env_file:
+      - "./common.env"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./overseerr/config:/config"
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$$(curl -s ifconfig.me)\" = \"185.159.157.45\" ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 0
+      start_period: 10s
+
+networks:
+  backbone:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: backbone
+    ipam:
+      config:
+        - subnet: 10.0.0.0/27
